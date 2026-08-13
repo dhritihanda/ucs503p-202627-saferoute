@@ -1,9 +1,12 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{hyperref}
+\hypersetup{hidelinks} % removes the red boxes hyperref draws around footnote/reference links
 \usepackage{enumitem}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{array}
+\usepackage{booktabs}
 
 % -----------------------------------------------------
 % bvraghav-tiet-ucs503p-article.sty
@@ -38,24 +41,24 @@
 
 % -----------------------------------------------------
 
-\title{Grievance-Resolution System for a Tier-2/3 City}
+\title{SafeRoute: A Crowdsourced Safety-Aware Navigation Web App}
 
-\BvrSetLabInstructor{Dr. Raghav B. Venkataramaiyer}
+\BvrSetLabInstructor{Dr. Paramveer Sidhu}
 
 \BvrSubtitle{%
-  Project Proposal for UCS503P  \\
+  Project Proposal for UCS503  \\
   Submitted to: \BvrLabInstructorValue \\ \bfseries
   Thapar Institute of Engineering and Technology% 
 }
 
 \author{
-  Vidya Vaidyanathan, CSED%
-  \thanks{Roll No: \texttt{1024030xxx}, %
-    Email: \texttt{vvaidhanathan\_be24\@thapar.edu}}
-  \and 
-  Bhanurekha Ganesan, CSED%
-  \thanks{Roll No: \texttt{1024030xxx}, %
-    Email: \texttt{bganesan\_be24\@thapar.edu}}
+  \textsc{Dhriti Handa}, COE%
+  \thanks{Roll No: \texttt{1024030176}, %
+    Email: \texttt{dhanda\_be24@thapar.edu}}
+  \and
+  \textsc{Disha Kundra}, COE%
+  \thanks{Roll No: \texttt{1024030180}, %
+    Email: \texttt{ddisha\_be24@thapar.edu}}
 }
 
 \date{\today}
@@ -65,178 +68,347 @@
 
 \section{Higher-order goal%
   \BvrHint{\ldots secondary framing}}
-This project aims to improve sustainable urban
-governance by reducing the time and effort required to
-resolve citizen issues. While the topic is broader than
-any single municipality, the immediate engineering
-objective is to translate \emph{efficient public
-  service delivery} into a measurable, deployable
-software solution.
+Everyone who has ever walked home at night has done the same
+mental calculation: which street actually feels safe, not just
+which one is shortest. No navigation tool answers that question
+today. SafeRoute does. It's a web application -- open a link, no
+install, no app store -- that puts a live, crowdsourced safety
+score next to every route, so students, women commuting after
+work, and night-shift staff can choose the safer path with the
+same confidence they already choose the faster one. The bigger
+goal is simple: make safety a routing input, the same way Google
+Maps made traffic a routing input.
 
 \section{Time-to-value %
 \BvrHint{\ldots primary heuristic}}
 \begin{itemize}[leftmargin=0.7cm]
-    \item We will deliver meaningful increments quickly by prototyping the core user workflow and validating it with users within a short iteration window.
-    \item We will prioritize fast feedback over perfection by using weekly iterations (and targeting CI-backed automation early) to reduce release friction.
-    \item Success is defined by what can be delivered and measured in the first iteration, then improved based on user feedback.
+    \item We will deliver a visibly working core loop early: the
+    web app will show a live map with a seeded safety heatmap and
+    a route that visibly differs between ``fastest'' and
+    ``safest'' toggles.
+    \item We will prioritize a usable, demoable increment over a
+    fully general one -- the first version uses manually seeded
+    incident data before the crowdsourcing and ML layers are
+    live, so the value of the safety toggle is demonstrable from
+    the first prototype.
+    \item Success in each iteration is defined by what can be
+    shown end-to-end in a browser (navigation, reporting,
+    heatmap), not by the completeness of any single subsystem.
 \end{itemize}
 
 \section{Problem Statement}
-Citizens in a tier-2/3 Indian city face delays and uncertainty when reporting local issues (e.g., streetlight outages, water leakage, garbage accumulation, road potholes). Common pain points include:
+Conventional navigation platforms -- Google Maps, Apple Maps --
+are excellent at optimizing for distance, travel time, and traffic.
+None of them give a user a dedicated, dynamically-computed safety
+layer to compare routes on. This gap matters most exactly when
+it's most dangerous to ignore: walking at night or through an
+unfamiliar area, where lighting and reported incidents can differ
+sharply between two streets that are otherwise equally fast.
 \begin{itemize}[leftmargin=0.7cm]
-    \item \textbf{Fragmentation:} complaints are often made via multiple channels (calls, social media, paper forms), causing lost context.
-    \item \textbf{Low transparency:} citizens cannot easily see the status of their complaint (e.g., ``received'', ``assigned'', ``in progress'', ``resolved'').
-    \item \textbf{Slow coordination:} departments/field teams lack a unified, trackable workflow with clear ownership.
-    \item \textbf{Poor data quality:} duplicate or incomplete reports force rework and extend resolution time.
+    \item \textbf{No safety option, period:} the shortest path may
+    run through a poorly-lit or isolated stretch, and neither the
+    app nor the user has any way to know that in advance.
+    \item \textbf{Safety tools exist, but don't navigate:} apps
+    like Safetipin collect useful safety data, but they function as
+    planning/audit dashboards for city governments -- not as a
+    consumer tool you'd actually open to get walking directions.
+    \item \textbf{SOS tools exist, but don't route:} apps like
+    bSafe or Noonlight handle emergencies well, but are purely
+    reactive -- they say nothing about which street to take in the
+    first place, and require an install.
+    \item \textbf{No time-of-day awareness:} a street that's fine
+    at 6~pm can feel very different at 11~pm; mainstream routing
+    tools don't capture this at all.
 \end{itemize}
 
-\textbf{Why this matters now (contextual relevance):} In an urban setting with limited staff bandwidth, even small process improvements can noticeably reduce resolution delays and repeated submissions.
+\textbf{Why this matters right now:} street lighting and safety
+perception vary block by block across Indian cities and campuses.
+This is something we and our classmates navigate every single day
+-- it's a real, felt problem, not one we invented to fit a project
+brief, and it currently gets solved with word-of-mouth guesswork
+instead of any systematic tool.
+
+\section{Existing Solutions and the Gap We Fill}
+\begin{itemize}[leftmargin=0.7cm]
+    \item \textbf{Google/Apple Maps:} best-in-class routing and
+    real-time traffic, but zero safety-awareness -- optimizes
+    purely for time and distance.
+    \item \textbf{Safetipin:} pioneered urban safety scoring in
+    India and works with city partners, but it's a planning tool,
+    not a navigation app -- there's no ``give me the safest route
+    right now'' experience, and coverage outside partner cities is
+    thin.
+    \item \textbf{bSafe / Noonlight:} strong SOS and
+    live-location-sharing, but mobile-app-only, install-required,
+    and entirely reactive -- no routing component at all.
+\end{itemize}
+SafeRoute is the first to put these three ideas -- live routing,
+crowdsourced safety data, and one-tap SOS -- into a single,
+install-free web app, with a spatial model that fills in the gaps
+where crowd data doesn't exist yet.
 
 \section{Proposed Solution %
 \BvrHint{\ldots Software Proposition}}
 \subsection{Overview}
-Build a \textbf{web-based} ``Grievance-to-Resolution'' system with the following components:
+SafeRoute is a \textbf{responsive web application} that layers a
+dynamically-updated, crowdsourced safety score on top of standard
+map routing:
 \begin{itemize}[leftmargin=0.7cm]
-    \item \textbf{Citizen submission portal:} users submit an issue with photo (optional), category, and locality/ward.
-    \item \textbf{Automated triage:} basic duplicate detection and completeness checks.
-    \item \textbf{Department workflow:} assign issues to relevant department/team and update statuses.
-    \item \textbf{Status transparency:} citizens track status and receive notifications when resolved.
-    \item \textbf{Admin/ops dashboard:} performance summaries (resolution time, backlog).
+    \item \textbf{Turn-by-turn navigation:} standard walking
+    directions via a self-hosted OSRM engine, rendered on a Mapbox
+    GL JS map, right in the browser.
+    \item \textbf{Fastest vs.\ Safest toggle:} one click re-ranks
+    candidate routes by a safety-weighted cost function instead of
+    distance alone.
+    \item \textbf{One-click incident reporting:} geotagged reports
+    (poor lighting, isolated area, past incident) using the
+    browser's Geolocation API -- minimal friction, no login wall
+    to just look around.
+    \item \textbf{Live safety heatmap:} a color-graded overlay
+    built from real reports, historical density, and time of day.
+    \item \textbf{Spatial interpolation for sparse areas:} the map
+    is never blank -- unreported streets get an estimated score
+    based on nearby data.
+    \item \textbf{SOS quick-share:} one click generates a live
+    location link sent to a pre-set emergency contact.
 \end{itemize}
 
 \subsection{Core workflow}
 \begin{enumerate}[leftmargin=0.7cm]
-    \item Citizen creates a complaint and receives a complaint ID immediately.
-    \item System validates completeness and suggests possible duplicates (lightweight similarity on text/category and approximate location).
-    \item Department staff update status (Received $\rightarrow$ Assigned $\rightarrow$ In Progress $\rightarrow$ Resolved).
-    \item Citizen views status updates and resolution notes.
+    \item User opens the app in any browser, picks a source and
+    destination, and taps ``fastest'' or ``safest.''
+    \item The backend checks safety scores for candidate routes in
+    PostGIS and re-ranks them with the safety-weighted cost
+    function.
+    \item While reviewing the route, if the user knows of a
+    hazard, they log it in two clicks -- location captured
+    automatically via the browser.
+    \item Nearby safety-score cells update, and the safety
+    heatmap refreshes for the next person who opens that area.
 \end{enumerate}
-
-\subsection{Operational constraints for an educational, tier-2/3 setting}
-\begin{itemize}[leftmargin=0.7cm]
-    \item Keep the solution usable on low-to-mid range devices via responsive web design.
-    \item Avoid dependence on advanced research algorithms; focus on workflow, automation, and system correctness.
-    \item Design for deployability using common web hosting and managed databases.
-\end{itemize}
 
 \section{Solution Approach %
 \BvrHint{\ldots Engineering focus}}
-This is an engineering course project, so we focus on scalable administrative and workflow aspects rather than novel algorithm research.
+This is an engineering course project, so our effort goes into
+geospatial systems integration and routing correctness -- not into
+inventing new machine-learning research.
 
-\subsection{Duplicate/quality assistance %
+\subsection{Safety-score interpolation %
 \BvrHint{\ldots non-research}}
-Duplicate detection will be heuristic-based:
+Estimating safety where reports are sparse is heuristic-and-model
+assisted, not a research contribution:
 \begin{itemize}[leftmargin=0.7cm]
-    \item Normalize text (category + short description keywords).
-    \item Use a simple similarity measure (e.g., token overlap / TF-IDF cosine with threshold) without claiming state-of-the-art.
-    \item Show top candidate duplicates to staff for decision; never fully auto-delete or auto-reject.
+    \item Raw incident reports are aggregated into a PostGIS grid,
+    weighted by recency and community upvotes.
+    \item Inverse Distance Weighting (IDW) -- a simple,
+    interpretable spatial interpolation technique -- fills in
+    scores for grid cells with no direct reports, using nearby
+    cells and time-of-day as inputs.
+    \item Interpolated cells are always shown as lower-confidence
+    than directly-reported ones, and the app never hides or blocks
+    a route without the user's own choice.
 \end{itemize}
 
-\subsection{Web architecture %
-\BvrHint{\ldots web-based solution}}
-A typical 3-tier web architecture:
+\subsection{System architecture %
+\BvrHint{\ldots web + geospatial}}
+A React web client talks to a Flask backend, which coordinates a
+geospatial database and a routing engine:
 \begin{itemize}[leftmargin=0.7cm]
-    \item \textbf{Frontend:} responsive UI for citizens and staff (status pages, submission form, dashboard).
-    \item \textbf{Backend API:} authentication, complaint submission, status transitions, assignment logic.
-    \item \textbf{Database:} store users, complaints, status history, attachments metadata.
+    \item \textbf{Web client:} React + Vite, with Mapbox GL JS for
+    the map, incident reporting, the heatmap layer, and SOS --
+    configured as an installable PWA.
+    \item \textbf{Backend API:} Flask REST API handling auth,
+    incident reports, safety-score queries, and safety-weighted
+    routing requests.
+    \item \textbf{Geospatial database:} PostgreSQL with PostGIS,
+    storing grid-based safety scores and reports with spatial
+    (GiST) indexing for fast radius/route queries.
+    \item \textbf{Routing engine:} a self-hosted OSRM instance;
+    the safety layer is applied either by modifying OSRM's cost
+    profile, or -- as a fallback if that proves too complex --
+    by re-ranking OSRM's candidate routes using an externally
+    computed safety score.
+    \item \textbf{Realtime layer:} Firebase Auth for login and
+    Firebase Cloud Messaging / Web Push for low-safety-zone alerts.
+    \item \textbf{Batch interpolation job:} a periodic job
+    recomputes the safety grid from new reports using the IDW
+    model, keeping live queries fast.
 \end{itemize}
 
-\subsection{CI/CD and fast delivery enabler}
-CI/CD will be used to:
+\subsection{Tech stack at a glance}
+\begin{center}
+\begin{tabular}{@{}p{3.2cm}p{10cm}@{}}
+\toprule
+\textbf{Layer} & \textbf{Tools} \\
+\midrule
+Frontend & React, Vite, JavaScript, HTML/CSS, Mapbox GL JS \\
+Backend & Python, Flask, REST APIs \\
+Database & PostgreSQL + PostGIS \\
+Routing & OSRM (self-hosted), Mapbox Directions \& Geocoding APIs \\
+Auth \& Notifications & Firebase Authentication, Firebase Cloud Messaging / Web Push \\
+AI/ML \& Data & Python, NumPy, Pandas, scikit-learn / SciPy (IDW interpolation) \\
+Dev Tools & Git, GitHub, VS Code, Postman \\
+Deployment & Vercel/Netlify (frontend), Render/Railway (backend + OSRM), Supabase/Neon (PostGIS) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Every layer uses a mature, well-documented tool -- we spend our
+time on routing correctness and geospatial performance, not on
+reinventing infrastructure that's already solved.
+
+\subsection{CI/CD and fast, safe delivery}
 \begin{itemize}[leftmargin=0.7cm]
-    \item Automatically build and run tests on every change.
-    \item Produce repeatable deployment artifacts to staging.
-    \item Enable safe and frequent releases of incremental features.
+    \item Every push runs backend tests (pytest) and frontend
+    tests (Jest + React Testing Library) via GitHub Actions.
+    \item Each milestone gets a repeatable frontend deploy
+    (Vercel/Netlify) and staging backend deploy ahead of the demo.
+    \item New features -- reporting, heatmap, safest-route toggle,
+    SOS -- ship incrementally without breaking core navigation.
 \end{itemize}
 
 \section{Evaluation Criterion %
 \BvrHint{\ldots measurable and attributable}}
-We define success using measurable metrics tied to the core workflow.
+We won't just claim SafeRoute works -- we'll measure it.
 
 \subsection{Primary evaluation metric}
-\textbf{Time-to-acknowledgement (TTA):} time between complaint submission and ``Received/Assigned'' status creation in the system.
+\textbf{Route divergence validity:} does the ``safest route''
+actually differ from the ``fastest route'' when safety scores
+along the corridor are clearly different?
 \begin{itemize}[leftmargin=0.7cm]
-    \item Target: median TTA $\le$ 2 hours during pilot window.
-    \item Attribution: measured from database timestamps (submission vs. first status update by staff).
+    \item Target: on a seeded test map of our campus/demo area,
+    safest and fastest routes visibly diverge in at least 80\% of
+    test cases containing a deliberately low-safety segment.
+    \item Measurement: compare route geometry from the
+    safety-weighted routing function against the plain,
+    unweighted OSRM route for identical start/end points.
 \end{itemize}
 
 \subsection{Secondary evaluation metrics}
 \begin{itemize}[leftmargin=0.7cm]
-    \item \textbf{Resolution time reduction:} reduce time-to-resolved compared to baseline process (even if baseline is collected via survey).
-    \item \textbf{Duplicate rate:} percentage of complaints flagged as duplicates and resolved without rework.
-    \item \textbf{User clarity:} citizen-reported clarity of status using a simple 1--5 feedback question.
-    \item \textbf{Reliability:} availability of staging/production for login and submission during business hours (e.g., $\ge$ 99\% uptime in pilot).
+    \item \textbf{Report-to-heatmap latency:} time between a
+    submitted report and the heatmap reflecting it (target: under
+    10 seconds).
+    \item \textbf{Interpolation sanity check:} spot-check
+    IDW-estimated scores against a small hand-labeled set of
+    ``ground truth'' cells.
+    \item \textbf{Query performance:} p95 latency for
+    radius/route safety queries under simulated load.
+    \item \textbf{Reliability:} uptime of the staging/production
+    backend and OSRM instance during the demo window.
 \end{itemize}
 
 \subsection{Pilot validation plan %
 \BvrHint{\ldots high-level}}
 \begin{itemize}[leftmargin=0.7cm]
-    \item Recruit 10--20 pilot users (citizens) and 3--5 staff roles (department simulation if real staff unavailable).
-    \item Compare metrics before/after within the iteration window by logging baseline estimates via short interviews or existing process observations.
+    \item Get 10--20 peers on campus to seed the first round of
+    reports and try the reporting flow.
+    \item Run a live walkthrough: show fastest and safest routes
+    diverging, submit a live report on stage, and watch the
+    heatmap update in real time.
 \end{itemize}
 
 \section{Scalability %
 \BvrHint{\ldots with foresight}}
-The proposition should scale in both theoretical and practical senses.
-
+The system needs to hold up both in theory and in practice.
 \begin{enumerate}[leftmargin=0.7cm]
-    \item \textbf{Scalable (theoretically):} The system should support growth in number of complaints and concurrent dashboard usage by:
-    \begin{itemize}[leftmargin=0.7cm]
-        \item decoupling components (frontend/backend),
-        \item enabling pagination and indexing for common queries,
-        \item using stateless API design.
-    \end{itemize}
-    
-    \item \textbf{Operationally deployable (practically):} The system should run on common web hosting:
-    \begin{itemize}[leftmargin=0.7cm]
-        \item managed database,
-        \item containerized or platform-hosted deployment,
-        \item CI/CD pipeline for staging/production.
-    \end{itemize}
+    \item \textbf{Scales in theory:} the web client is fully
+    decoupled from the backend and routing engine; PostGIS spatial
+    indexing (GiST) replaces full-table scans; the backend API is
+    stateless, so it can scale horizontally behind a load balancer.
+    \item \textbf{Deployable in practice:} React frontend on
+    Vercel/Netlify (static hosting + CDN); Flask backend and OSRM
+    on Render/Railway; managed PostGIS-enabled Postgres on
+    Supabase or Neon; a GitHub Actions CI/CD pipeline for staging
+    and production.
 \end{enumerate}
+Beyond a single campus, city-scale coverage would need bigger OSRM
+map data and query infrastructure -- a deliberate, honest
+``future scope'' item, not something we're pretending is already
+solved.
 
 \section{Engine availability heuristic}
-A mature set of ``engines'' (tooling/services) is available to implement this as a web-based project:
+Nothing here is built from scratch -- every piece rests on a
+mature, well-supported tool:
 \begin{itemize}[leftmargin=0.7cm]
-    \item Web framework for REST APIs and templated/reactive pages.
-    \item Managed relational or document database.
-    \item Authentication approach (token-based or session-based).
-    \item Object storage for optional attachments (or local storage for pilot).
-    \item Test framework for unit/integration tests.
-    \item CI runner and staging deployment target.
+    \item Web framework: React + Vite, for a fast, map-heavy
+    single-page app.
+    \item Routing: self-hosted OSRM with a modified cost profile
+    (or route re-ranking as fallback), plus Mapbox for map tiles
+    and geocoding.
+    \item Geospatial storage: PostgreSQL + PostGIS with GiST
+    indexing.
+    \item Backend: Flask for the REST API.
+    \item Auth and push: Firebase Authentication and Web Push /
+    Firebase Cloud Messaging.
+    \item Interpolation: scikit-learn / SciPy for a lightweight
+    IDW implementation, not a custom research model.
 \end{itemize}
-We will use these mature components to focus on workflow design, correctness, and measurement rather than inventing new infrastructure.
 
-\section{Project scope and deliverables %
+\section{Project Scope and Deliverables %
 \BvrHint{\ldots iteration-friendly}}
 \subsection{Initial deliverable %
-\BvrHint{\ldots first iteration}}
+\BvrHint{\ldots first iteration / prototype}}
 \begin{itemize}[leftmargin=0.7cm]
-    \item Citizen submission form + complaint ID generation
-    \item Staff workflow: update status and assignment
-    \item Citizen status page: view timeline/history
-    \item Basic logging and timestamps for TTA measurement
-    \item CI: build + backend unit tests + linting
-    \item CD to staging with a single command or pipeline job
+    \item Proposal finalization, wireframes, repository and
+    architecture setup.
+    \item Basic map and turn-by-turn navigation integration
+    (Mapbox/OSRM) in the web app.
+    \item Incident reporting feature and PostGIS schema for
+    reports and the safety-score grid.
+    \item \textbf{Prototype:} web app shows a map with a
+    manually-seeded safety heatmap and a route that visibly
+    differs between ``fastest'' and ``safest'' toggles, for our
+    own campus/city.
 \end{itemize}
 
 \subsection{Subsequent deliverables}
 \begin{itemize}[leftmargin=0.7cm]
-    \item Lightweight duplicate suggestions with staff review
-    \item Notification layer (email/SMS optional in later iteration; can start with in-app notifications)
-    \item Admin dashboard for metrics and backlog
-    \item Improved search/filtering and indexed queries for scale readiness
+    \item Dynamic safety-score computation from live reports and
+    the safest-route toggle wired to the real cost function.
+    \item Progress report; IDW-based interpolation model for
+    sparse-data areas.
+    \item SOS/emergency quick-share feature, push notifications
+    for low-safety zones, and UX polish.
+    \item Load testing of geospatial queries and bug fixes.
+    \item Deployment of the backend, OSRM instance, and web app.
+    \item Final presentation preparation and live demo
+    rehearsal.
 \end{itemize}
 
-\section{Risks and mitigations}
+\section{Risks and Mitigations}
 \begin{itemize}[leftmargin=0.7cm]
-    \item \textbf{Data privacy / consent:} minimize collected data; keep attachments optional; store only what is needed.
-    \item \textbf{Staff adoption:} provide an easy UI for status updates; keep workflow steps minimal; include shortcuts.
-    \item \textbf{Evaluation measurement ambiguity:} instrument timestamps and define clear status transitions before development begins.
-    \item \textbf{Operational issues in pilot:} use staging early; ensure CI/CD produces repeatable deployments.
+    \item \textbf{Cold start (no data for new areas):} manually
+    seed safety scores for the campus/demo area up front; mark
+    interpolated cells as lower-confidence.
+    \item \textbf{Fake or malicious reports:} rate-limit reports
+    per authenticated user, require a minimum upvote count before
+    a report meaningfully moves the safety score.
+    \item \textbf{OSRM cost-function complexity:} budget explicit
+    research time in Week 3--4; fallback is re-ranking OSRM's
+    candidate routes by an externally computed safety score,
+    rather than editing OSRM's Lua profile internally.
+    \item \textbf{Browser geolocation limits:} permission prompts
+    and desktop IP-based accuracy are worse than mobile GPS --
+    mitigated with manual address entry as a graceful fallback.
+    \item \textbf{Slow queries at scale:} PostGIS GiST indexes from
+    day one, load-tested in Week~13, well before deployment.
+    \item \textbf{Two people, three domains (frontend, geospatial
+    backend, ML):} strict scope discipline -- PWA polish and push
+    notifications are stretch goals, and the Week~7 prototype
+    scope is protected above everything else.
 \end{itemize}
 
 \section{Summary}
-This project proposes a deployable web platform to reduce grievance handling delays in a tier-2/3 city context. It meets the course criteria by emphasizing time-to-value through rapid iterations, implementing CI/CD to support frequent safe releases, and using measurable evaluation criteria (especially time-to-acknowledgement). It remains focused on engineering workflow and scalability readiness rather than research-driven novelty.
+This project proposes a deployable, web-based, safety-aware
+navigation application that layers crowdsourced and interpolated
+safety scores on top of standard shortest-path routing. It meets
+the course criteria by emphasizing time-to-value through a Week-7
+demoable prototype, implementing CI/CD to support frequent safe
+releases, and using measurable evaluation criteria (route
+divergence validity, report-to-heatmap latency, and geospatial
+query performance). It remains focused on systems-engineering
+depth -- full-stack web development, geospatial databases, and
+applied spatial interpolation -- rather than research-driven
+algorithmic novelty.
 
 \end{document}
