@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap');
+
+:root {
+  /* Brand */
+  --ink: #14141c;
+  --ink-soft: #1e1e29;
+  --ink-raised: #24242f;
+  --accent: #ffc633;
+  --accent-deep: #e5a913;
+  --accent-glow: rgba(255, 198, 51, 0.35);
+
+  /* Surfaces */
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-muted: #f1f0ea;
+  --border: #e6e3d8;
+  --border-strong: #d7d3c3;
+
+  /* Text */
+  --text: #17171e;
+  --text-muted: #85837a;
+  --text-on-ink: #f4f3ee;
+  --text-on-ink-muted: #9a9aa6;
+
+  /* Status */
+  --safe: #1f9d5c;
+  --safe-bg: #e6f6ec;
+  --caution: #d9971f;
+  --caution-bg: #fbf0dc;
+  --danger: #e2314a;
+  --danger-deep: #b31f34;
+  --danger-bg: #fdeaec;
+
+  /* Shape & motion */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
