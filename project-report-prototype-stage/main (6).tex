@@ -1,0 +1,543 @@
+\documentclass{tietreport}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+
+% Bibliography
+\usepackage[
+  style=alphabetic,
+  backend=biber,
+  sorting=nty,
+  doi=false,
+  isbn=false,
+  eprint=false
+]{biblatex}
+\addbibresource{references.bib}
+
+% Chapters start on the next page (no blank pages)
+\AtBeginDocument{\let\cleardoublepage\clearpage}
+
+%% ================= PROJECT DETAILS =================
+
+\TitlePageHeader{UCS503 - Software Engineering (Project)}
+\ProjectTitle{SafeRoute}
+\ProjectSubTitle{A Crowdsourced Safety-Aware Navigation Web App}
+
+\author{%
+  \texttt{1024030176} Dhriti Handa \\
+  \texttt{1024030180} Disha Kundra%
+}
+
+\TitlePageSubText{Group: \texttt{3C16} BE Third Year, COE}
+\AdvisorName{Dr. Paramveer Sidhu}
+
+\TitlePageFooterText{{%
+    \large Mid-Semester Evaluation \\[0.2cm]
+    \bfseries Computer Science and Engineering Department%
+  } \\[0.15cm]
+  Thapar Institute of Engineering and Technology, Patiala%
+}
+
+%% ===================================================
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+% =====================================================
+\chapter{Introduction}
+% =====================================================
+
+\section{Background and Context}
+
+When we walk home at night, we do not only ask ``which road is
+shortest?'' but also ``which road feels safe?''. Street lighting,
+foot traffic and past incidents can differ a lot between two roads
+that take the same time to walk. Today this choice is made by
+word of mouth, not by any tool.
+
+\textbf{SafeRoute} is an install-free web app that shows two routes
+between a start and a destination: the \emph{fastest} route and the
+\emph{safest} route. Safety comes from crowdsourced reports, and the
+safety score is higher at night.
+
+\textbf{Guiding principle (time-to-value).} Our proposal says to show
+a working end-to-end loop as early as possible. So the prototype uses
+manually seeded data and a light technology stack, and we add the
+heavier parts later.
+
+\subsection{Problem Statement}
+
+Google Maps and Apple Maps optimise only for time, distance and
+traffic. They give no safety information. The problem has three parts:
+
+\begin{itemize}
+  \item \textbf{No safety option:} the shortest path may go through a
+    dark or isolated street and the user cannot know in advance.
+  \item \textbf{Safety and SOS apps do not navigate:} Safetipin
+    collects safety data but is a planning tool for city governments;
+    bSafe and Noonlight send SOS alerts but give no route advice.
+  \item \textbf{No time-of-day awareness:} a street that is fine at
+    6~pm can feel very different at 11~pm.
+\end{itemize}
+
+\section{Existing Solutions and the Gap}
+
+Table~\ref{tab:existing} compares existing tools with SafeRoute.
+SafeRoute is the only one that combines walking routes, safety data
+and SOS in one install-free web app. (The SafeRoute row is the
+intended product; Chapter~3 states what the prototype already does.)
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|l|c|c|c|c|c|}
+  \hline
+  \textbf{Tool} & \textbf{Walking} & \textbf{Safety} & \textbf{SOS} &
+  \textbf{No} & \textbf{Time of} \\
+  & \textbf{routing} & \textbf{data} & & \textbf{install} & \textbf{day} \\
+  \hline
+  Google / Apple Maps & Yes & No  & No  & Yes & No  \\ \hline
+  Safetipin           & No  & Yes & No  & No  & No  \\ \hline
+  bSafe / Noonlight   & No  & No  & Yes & No  & No  \\ \hline
+  SafeRoute           & Yes & Yes & Yes & Yes & Yes \\ \hline
+\end{tabular}
+\caption{Comparison with existing tools}
+\label{tab:existing}
+\end{table}
+
+\section{Project Objectives}
+
+\begin{enumerate}
+  \item \textbf{Safety-aware routing:} compute a fastest route
+    (distance only) and a safest route (distance weighted by risk).
+  \item \textbf{Crowdsourced reporting:} users submit geotagged
+    reports with an optional photo; each report raises the risk of the
+    nearest road segment.
+  \item \textbf{Time-of-day awareness:} risk is increased at night, so
+    routes and the heatmap change after dark.
+  \item \textbf{Emergency sharing:} an SOS feature creates a
+    live-location link for a saved contact.
+  \item \textbf{Measurable evaluation:} the safest route should differ
+    from the fastest route in at least 80\% of test cases that contain
+    a low-safety segment.
+\end{enumerate}
+
+\section{Scope and Deliverables}
+
+Table~\ref{tab:status} shows the status of each deliverable at this
+mid-semester evaluation.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|p{6cm}|l|p{5cm}|}
+  \hline
+  \textbf{Deliverable} & \textbf{Status} & \textbf{Note} \\ \hline
+  Repository and architecture setup & Done & Backend + frontend \\ \hline
+  Reporting and storage schema & Done & SQLite (not PostGIS) \\ \hline
+  Fastest and safest routing & Done & Custom Dijkstra, seeded data \\ \hline
+  Heatmap and night mode & Done & Backend endpoint \\ \hline
+  SOS quick-share & Partial & SMS is simulated \\ \hline
+  Web UI (home, report, SOS) & Done & Placeholder data \\ \hline
+  Frontend connected to API & Pending & Next task \\ \hline
+  Real map (Mapbox), IDW interpolation & Pending & Planned \\ \hline
+  Push alerts, CI/CD, load test, deployment & Pending & Later milestones \\ \hline
+\end{tabular}
+\caption{Deliverable status at mid-semester}
+\label{tab:status}
+\end{table}
+
+% =====================================================
+\chapter{Methodology and Design}
+% =====================================================
+
+\section{System Architecture}
+
+\subsection{High-Level Design}
+
+SafeRoute has three layers. A React web client talks to a Flask REST
+API over HTTP/JSON. The API calls two Python modules (one for routing,
+one for safety) and stores everything in an SQLite database.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering
+  \textbf{React web client (Vite)} \\
+  Home, route and heatmap, report, SOS}}\\[3pt]
+$\downarrow$ HTTP / JSON \\[3pt]
+\fbox{\parbox{0.8\textwidth}{\centering
+  \textbf{Flask REST API} (\texttt{app.py})}}\\[3pt]
+$\downarrow$ \\[3pt]
+\fbox{\parbox{0.38\textwidth}{\centering
+  \textbf{routing.py} \\ Dijkstra, two modes}}\hspace{0.02\textwidth}
+\fbox{\parbox{0.38\textwidth}{\centering
+  \textbf{safety.py} \\ risk, heatmap, reports}}\\[3pt]
+$\downarrow$ \\[3pt]
+\fbox{\parbox{0.8\textwidth}{\centering
+  \textbf{SQLite database} + \texttt{uploads/} for photos}}
+\caption{Architecture of the SafeRoute prototype}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Core Workflow}
+
+\begin{enumerate}
+  \item The user picks a start and a destination
+    (\texttt{GET /api/places}).
+  \item The app asks for routes (\texttt{GET /api/route}); the backend
+    returns the fastest and the safest route.
+  \item If the user sees a hazard, they send a report
+    (\texttt{POST /api/reports}).
+  \item The report raises the risk of that road, so the heatmap and
+    the next route request show it immediately.
+\end{enumerate}
+
+\subsection{Technical Stack}
+
+Python and Flask~\cite{flask} for the backend, React~\cite{react} with
+Vite~\cite{vite} for the frontend, and SQLite~\cite{sqlite} for the
+database. Table~\ref{tab:stack} compares this with the stack planned in
+the proposal. We chose the lighter stack first so that the full loop
+could be shown early.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|l|l|l|}
+  \hline
+  \textbf{Layer} & \textbf{Prototype (done)} & \textbf{Proposal (planned)} \\ \hline
+  Frontend  & React, Vite & + Mapbox GL JS \\ \hline
+  Database  & SQLite & PostgreSQL + PostGIS \\ \hline
+  Routing   & Own Dijkstra & OSRM~\cite{luxen2011} \\ \hline
+  Gap filling & None & IDW interpolation~\cite{shepard1968} \\ \hline
+  SOS       & Simulated SMS & Real SMS / push \\ \hline
+  Testing   & Manual checks & pytest, Jest, GitHub Actions \\ \hline
+\end{tabular}
+\caption{Prototype stack versus planned stack}
+\label{tab:stack}
+\end{table}
+
+\subsection{Design Decisions}
+
+\begin{itemize}
+  \item \textbf{Explainable scoring:} one simple formula decides the
+    route, so it is easy to test and to explain.
+  \item \textbf{Stateless API:} all state is in the database, so the
+    API can be scaled later.
+  \item \textbf{Never block the user:} routes are ranked by safety but
+    never hidden; the user chooses.
+\end{itemize}
+
+\section{Data Design}
+
+The database has five tables (Table~\ref{tab:schema}). A road segment is
+an undirected \emph{edge} between two places (\emph{nodes}).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|l|p{9cm}|}
+  \hline
+  \textbf{Table} & \textbf{Main columns} \\ \hline
+  \texttt{nodes}    & code, name, lat, lng \\ \hline
+  \texttt{edges}    & id, u, v, name, risk (0 to 1), note \\ \hline
+  \texttt{reports}  & id, edge\_id, lat, lng, categories, description, photo, created \\ \hline
+  \texttt{contacts} & id, name, phone \\ \hline
+  \texttt{sos}      & id, contact\_id, lat, lng, active, updated \\ \hline
+\end{tabular}
+\caption{Database schema}
+\label{tab:schema}
+\end{table}
+
+\subsection{Seeded Campus Data}
+
+\texttt{seed.py} fills the database with 8 places around the Thapar
+campus (G1 = Thapar Gate~1, A = Bus Stand Rd Jn, B = Library Block,
+C = Model Town Chowk, D = Station Rd Jn, E = Campus Rd Jn,
+F = Campus Rd North, BUS = Rajpura Bus Stand) and the 9 road segments
+in Table~\ref{tab:edges}, with hand-assigned risk values. This is the
+manual seeding the proposal plans for the cold-start phase.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|c|l|l|c|p{4.6cm}|}
+  \hline
+  \textbf{ID} & \textbf{Segment} & \textbf{Road} & \textbf{Risk} &
+  \textbf{Note} \\ \hline
+  1 & G1 -- A   & Bus Stand Rd  & 0.10 & Well-lit main road \\ \hline
+  2 & A -- C    & Model Town Ln & 0.80 & Dim stretch \\ \hline
+  3 & C -- D    & Model Town Ln & 0.70 & Isolated, no foot traffic \\ \hline
+  4 & D -- BUS  & Station Rd    & 0.30 & Mixed reports \\ \hline
+  5 & A -- B    & Bus Stand Rd  & 0.10 & Well-lit, foot traffic \\ \hline
+  6 & B -- E    & Campus Rd     & 0.10 & Verified safe \\ \hline
+  7 & E -- F    & Campus Rd     & 0.15 & Verified safe \\ \hline
+  8 & F -- BUS  & Campus Rd     & 0.10 & Verified safe, shops open \\ \hline
+  9 & B -- D    & Link Ln       & 0.50 & Poorly lit after 8 pm \\ \hline
+\end{tabular}
+\caption{Seeded road segments}
+\label{tab:edges}
+\end{table}
+
+\section{Implementation Details}
+
+\subsection{Module 1: Safety-Weighted Routing}
+
+\paragraph{Step 1: night adjustment.} At night the stored risk $r$ is
+multiplied by $1.25$ (maximum $1$):
+\[
+  r_{\mathrm{eff}} =
+  \begin{cases}
+    \min(1,\ 1.25\,r) & \text{night mode} \\
+    r & \text{otherwise}
+  \end{cases}
+\]
+The risk is then labelled: below $0.3$ is \emph{safe}, from $0.3$ to
+$0.6$ is \emph{mixed}, and $0.6$ or more is \emph{risk}.
+
+\paragraph{Step 2: cost of a segment.} With $d$ the length of the
+segment in metres (haversine formula on the coordinates):
+\[
+  w =
+  \begin{cases}
+    d & \text{fastest route} \\
+    d\,(1 + 4\,r_{\mathrm{eff}}) & \text{safest route}
+  \end{cases}
+\]
+A fully risky segment costs five times its length, so the safest route
+accepts a small detour to avoid it; a segment with no risk costs
+exactly its length.
+
+\paragraph{Step 3: shortest path.} Dijkstra's algorithm~\cite{dijkstra1959}
+(with a binary heap) runs twice on the road graph, once with each cost.
+The API returns, for each route, the coordinates, distance, walking time
+(83~m/min), average risk and turn-by-turn steps, plus a
+\texttt{diverges} flag that says whether the two routes differ.
+
+\subsection{Module 2: Secondary Features}
+
+\paragraph{REST API.} Table~\ref{tab:api} lists the endpoints.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|l|p{4.6cm}|p{5.6cm}|}
+  \hline
+  \textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} \\ \hline
+  GET  & \texttt{/api/places}  & List places \\ \hline
+  GET  & \texttt{/api/route}   & Fastest and safest route \\ \hline
+  GET  & \texttt{/api/heatmap} & Risk of every segment \\ \hline
+  POST & \texttt{/api/reports} & Submit a report (+ photo) \\ \hline
+  GET  & \texttt{/api/reports} & Latest 20 reports \\ \hline
+  GET/POST & \texttt{/api/contacts} & List or add contacts \\ \hline
+  POST & \texttt{/api/sos}     & Start an SOS session \\ \hline
+  GET/PUT/DELETE & \texttt{/api/sos/<id>} & Read, update or end session \\ \hline
+\end{tabular}
+\caption{Backend REST endpoints}
+\label{tab:api}
+\end{table}
+
+\paragraph{Incident reporting.} A report has a location, categories, a
+description and an optional photo (saved with a random filename). The
+backend finds the nearest road segment, raises its risk by $0.15$
+(maximum $1$) and updates its note. Since routing reads the same table,
+the next route request already uses the new risk.
+
+\paragraph{Heatmap.} \texttt{/api/heatmap} returns every segment with
+its effective risk; with \texttt{night=1} the same map looks riskier.
+
+\paragraph{SOS quick-share.} Starting SOS creates an 8-character session
+ID for a saved contact and stores the user's location. The location can
+be updated and the session ended later. In the prototype the SMS is
+simulated: the tracking link is printed in the server console.
+
+\paragraph{Frontend.} The React app has three screens: \emph{Home}
+(places, fastest/safest toggle, route and heatmap tabs), \emph{Report}
+(issue types and details) and \emph{SOS} (hold button, share location,
+stand down). Currently they use placeholder data and a drawn map;
+connecting them to the API is the main remaining task.
+
+\paragraph{Running the prototype.} \texttt{python app.py} in
+\texttt{code/backend} (the database is seeded automatically) and
+\texttt{npm install \&\& npm run dev} in \texttt{code/frontend}.
+
+% =====================================================
+\chapter{Results and Evaluation}
+% =====================================================
+
+\section{Evaluation Criteria}
+
+Our main metric is \textbf{route divergence}: the safest route should
+differ from the fastest in at least 80\% of test cases where the fastest
+route has a risky segment. Secondary metrics are listed in
+Table~\ref{tab:criteria}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|p{5cm}|l|p{5cm}|}
+  \hline
+  \textbf{Metric} & \textbf{Target} & \textbf{Status} \\ \hline
+  Route divergence & $\ge 80\%$ & Measured: 43\% \\ \hline
+  Report-to-heatmap time & $< 10$ s & Measured: a few ms (in-process) \\ \hline
+  Interpolation check, load test, uptime & -- & Pending \\ \hline
+\end{tabular}
+\caption{Evaluation criteria and status}
+\label{tab:criteria}
+\end{table}
+
+\section{Testing Methodology}
+
+\begin{itemize}
+  \item \textbf{Unit testing:} routing and safety functions were run
+    directly in Python on the seeded data; automated \texttt{pytest}
+    tests are planned.
+  \item \textbf{Integration testing:} \texttt{/api/places} and
+    \texttt{/api/route} were called in a browser and returned the
+    expected data. Report, contact and SOS endpoints are not yet tested
+    end to end.
+  \item \textbf{Divergence testing:} the router was run for all
+    $8 \times 7 = 56$ ordered pairs of places in night mode.
+  \item \textbf{Report test:} one report was added and routes were
+    recomputed.
+  \item \textbf{Performance and user testing:} timing was measured
+    in-process only; load test and user pilot come later.
+\end{itemize}
+
+\section{Performance Metrics}
+
+\subsection{Headline Route}
+
+For Thapar Gate~1 to Rajpura Bus Stand, the fastest route uses Link Lane
+(poorly lit) and Station Road (mixed). The safest route stays on Campus
+Road. Table~\ref{tab:routes} shows the result.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|r|r|r|}
+  \hline
+  \textbf{Setting} & \textbf{Route} & \textbf{Distance (m)} &
+  \textbf{Time (min)} & \textbf{Avg.\ risk} \\ \hline
+  Day   & Fastest & 976  & 12 & 0.26 \\ \hline
+  Day   & Safest  & 1030 & 12 & 0.11 \\ \hline
+  Night & Fastest & 976  & 12 & 0.32 \\ \hline
+  Night & Safest  & 1030 & 12 & 0.14 \\ \hline
+\end{tabular}
+\caption{Fastest versus safest route, G1 to BUS}
+\label{tab:routes}
+\end{table}
+
+The safest route is only 54~m (about 5.5\%) longer but cuts the average
+risk by more than half (58\% by day, 56\% at night).
+
+\subsection{Route Divergence}
+
+A pair of places is a test case if its fastest route has at least one
+\emph{risk} segment. There were 28 such cases, and the routes diverged
+in 12 of them, i.e.\ \textbf{43\%}, below the 80\% target.
+
+\subsection{Effect of a Report}
+
+A ``Poor lighting'' report on Link Lane raised its risk from 0.50 to
+0.65. The fastest route's night risk rose from 0.32 to 0.36, while the
+safest route stayed at 0.14 because it already avoids Link Lane.
+
+\subsection{Query Time}
+
+Computing both routes took about 0.13~ms on average over 500 runs. This
+is in-process on a tiny graph (8 places), so it is not a substitute for
+the planned load test.
+
+\section{Analysis}
+
+\begin{itemize}
+  \item \textbf{Did we meet the objectives?} Safety-aware routing,
+    reporting, night mode and SOS work in the backend. The 80\%
+    divergence target was \emph{not} met (43\%).
+  \item \textbf{Why is divergence low?} Of the 16 cases that did not
+    diverge, 8 involve Model Town Chowk (C), which is connected only
+    through two risky roads, so no safer path exists. The other 8
+    involve Station Rd Jn (D): the safer path exists but is much longer,
+    so the cost still prefers the direct road. Raising the risk weight
+    from 4 to 8, 12 and 20 did not change the result, so the limit
+    comes from the small map, not the formula.
+  \item \textbf{What worked well?} The cost function is simple, one
+    algorithm serves both modes, and reports and night mode change the
+    output immediately.
+  \item \textbf{Challenges:} PostGIS and OSRM were too heavy for the
+    first iteration, so we built the cost function over a small graph.
+    Frontend and backend were built in parallel, so integration is left
+    for the next phase.
+  \item \textbf{Known gaps:} frontend not connected to the API; map is a
+    drawing; a report adds a fixed $+0.15$ with no upvotes; any request
+    can raise a risk (no protection against fake reports).
+\end{itemize}
+
+\section{Risks and Mitigations}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{4.6cm}|p{4.6cm}|}
+  \hline
+  \textbf{Risk} & \textbf{Mitigation} & \textbf{Status} \\ \hline
+  No data for new areas (cold start) & Seed scores; interpolate later &
+    Seeded; interpolation pending \\ \hline
+  Fake reports & Rate limit, minimum upvotes & Not implemented \\ \hline
+  OSRM complexity & Own router first & Avoided for now \\ \hline
+  Slow queries at scale & Spatial indexes, load test & Pending \\ \hline
+\end{tabular}
+\caption{Main risks from the proposal}
+\label{tab:risks}
+\end{table}
+
+% =====================================================
+\chapter{Conclusion}
+% =====================================================
+
+\section{Summary of Work}
+
+We built a Flask backend with a seeded campus graph, a safety-weighted
+Dijkstra router (fastest and safest), night-time risk adjustment, a
+heatmap, photo-supported reporting that updates road risk, and a
+simulated SOS flow. We also built the React screens. The routing,
+reporting, time-of-day and SOS objectives work in the backend; the
+divergence target needs a larger map.
+
+\section{Key Findings}
+
+\begin{itemize}
+  \item A simple cost $d(1+4r)$ steers routes away from risky roads: a
+    54~m detour halved the average risk on the headline route.
+  \item A report affects the very next route request, because routing
+    and reporting share one table.
+  \item Divergence depends on map structure: only 43\% on the small
+    seeded graph, since it has few parallel streets.
+\end{itemize}
+
+\section{Future Work and Recommendations}
+
+\begin{enumerate}
+  \item Connect the React screens to the API and add a real map.
+  \item Move to PostgreSQL with PostGIS; compare with OSRM routing.
+  \item Add IDW interpolation~\cite{shepard1968} for areas without
+    reports, and weight reports by recency and upvotes.
+  \item Add login, rate limiting and automated tests (\texttt{pytest},
+    GitHub Actions).
+  \item Use a larger or real street map to retest the 80\% target.
+  \item Send real SOS messages, run a pilot with 10--20 peers, load test
+    and deploy.
+\end{enumerate}
+
+\section{Final Remarks}
+
+The prototype shows that making safety a routing input is feasible with
+modest tools. The main lesson is to get one complete loop working early
+and let honest measurements, including the missed target, decide what to
+improve next.
+
+\printbibliography[heading=bibintoc]
+
+\end{document}
